@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <cstdint>
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef int32_t Register;
 typedef uint32_t Addr;
@@ -14,7 +15,7 @@ const size_t kMemSize = 0x400000;
  * second byte - dest (if present)
  * third, fourth - two sources (if present)
  */
-
+/из cpp, чтобы перечисляемые элементы были не типа int
 enum class Opcode : std::uint8_t {
         kUnknown = 0,
         kAdd = 0b0110011,
@@ -32,23 +33,72 @@ enum class Opcode : std::uint8_t {
 };
 
 struct Memory {
-        Register data[kMemSize] = {}; 
-} memory; 
+        Register data[kMemSize]; 
+};
 
-Register load(Addr addr);
-void store(Addr addr, Register value);
+struct CpuState{
+    Register pc;
+    Register regs[kNumRegisters];
+    struct Memory *memory;
+    bool is_finished;
+}; 
+
+Register load(struct Memory *memory, Addr addr);
+void store(struct Memory *memory, Addr addr, Register value);
+
+void CpuState_init(CpuState *cpu, struct Memory *memory);
+
+Register fetch(struct CpuState *cpu);
+Opcode get_opcode(Register bytes);
+Register get_dst(Register bytes);
+Register get_src1(Register bytes);
+Register get_src2(Register bytes);
 
 int main()
 {       
         return 0;
 }
 
-Register load(Addr addr)
+Register load(struct Memory *memory, Addr addr)
 {
-         return memory.data[addr];
+        //проверка...
+         return memory->data[addr];
 }
 
-void store(Addr addr, Register value) 
+void store(struct Memory *memory, Addr addr, Register value) 
+{       
+        //проверка на выход на пределы 
+         memory->data[addr] = value; 
+}
+
+void CpuState_init(CpuState *cpu, struct Memory *mem)
 {
-         memory.data[addr] = value; 
+        cpu->pc = 0;
+        cpu->memory = mem;
+        cpu->is_finished = false;
+}
+
+Register fetch(struct CpuState *cpu) 
+{
+    return load(cpu->memory, cpu->pc);
+}
+
+Opcode get_opcode(Register bytes) 
+{
+    return (Opcode)((bytes >> 24U) & 0xFFU);
+}
+
+Register get_dst(Register bytes)  
+{
+    return (bytes >> 16U) & 0xFFU;
+}
+
+Register get_src1(Register bytes) 
+{
+    return (bytes >> 8U) & 0xFFU;
+}
+
+Register get_src2(Register bytes)  
+{
+    return bytes & 0xFFU;
 }
