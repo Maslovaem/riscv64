@@ -261,36 +261,47 @@ Instruction decode(Register bytes)
 void execute(CpuState *cpu, Instruction *instruction) {
 	switch (instruction->opcode) 
 	{
-		case Opcode::kAdd: 
-			if (func7 == 0b0000000)
+		case Opcode::kAdd:
+		{
+			Register res = 0; 
+			if (instruction->func7 == 0b0000000)
 			{
-				Register res = get_reg(cpu, instruction->rs1) + get_reg(cpu, instruction->rs2);
+				res = get_reg(cpu, instruction->rs1) + get_reg(cpu, instruction->rs2);
 			}
-			else if (func7 == 0b0100000)
+			else if (instruction->func7 == 0b0100000)
 			{
-				Register res = get_reg(cpu, instruction->rs1) - get_reg(cpu, instruction->rs2);
+				res = get_reg(cpu, instruction->rs1) - get_reg(cpu, instruction->rs2);
 			}
 			set_reg(cpu, instruction->rd, res);
 			cpu->pc += 4;
 			break;
+		}
 		case Opcode::kAddi:
-			Register res = get_reg(cpu, instruction->rs1) + instuction->imm;
+		{
+			Register res = get_reg(cpu, instruction->rs1) + instruction->imm;
 			set_reg(cpu, instruction->rd, res);
 			cpu->pc += 4;
 			break;
+		}
 		case Opcode::kEBreak: 
+		{
 			cpu->is_finished = true;
 			break;
-		case Opcode::kJal: 
+		}
+		case Opcode::kJal:
+		{ 
 			set_reg(cpu, instruction->rd, cpu->pc + 4);
 			Register jump_target_address = cpu->pc + instruction->imm;
         		cpu->pc = jump_target_address;
 			break;
+		}
 		case Opcode::kJalr:
+		{
 			set_reg(cpu, instruction->rd, cpu->pc + 4);
                         Register jump_target_address = (cpu->pc + instruction->imm) & 0xFFFFFFFE;
                         cpu->pc = jump_target_address; 
         		break;
+		}
 		case Opcode::kStore: 
         		cpu->pc += 4;
 			break;
