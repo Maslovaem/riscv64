@@ -54,16 +54,27 @@ typedef struct {
 Register load(struct Memory *memory, Addr addr);
 void store(struct Memory *memory, Addr addr, Register value);
 
-void CpuState_init(CpuState *cpu, struct Memory *memory);
-void Memory_init(struct Memory *mem);
+void cpu_state_init(CpuState *cpu, struct Memory *memory);
+void memory_init(struct Memory *mem);
 
 Register fetch(struct CpuState *cpu);
+Instruction decode(Register bytes);
+void dump_cpu(struct CpuState *cpu);
+
+Register get_reg(struct CpuState *cpu, size_t id);
+void set_reg(struct CpuState *cpu, size_t id, Register value);
+
 Opcode get_opcode(Register bytes);
 Register get_rd(Register bytes);
 uint8_t get_func3(Register bytes);
 uint8_t get_func7(Register bytes);
 Register get_rs1(Register bytes);
 Register get_rs2(Register bytes);
+uint32_t get_imm_I(Register bytes);
+uint32_t get_imm_B(Register bytes);
+uint32_t get_imm_S(Register bytes);
+uint32_t get_imm_U(Register bytes);
+uint32_t get_imm_J(Register bytes);
 
 int main()
 {	
@@ -82,14 +93,14 @@ void store(struct Memory *memory, Addr addr, Register value)
 	 memory->data[addr] = value; 
 }
 
-void CpuState_init(CpuState *cpu, struct Memory *mem)
+void cpu_state_init(CpuState *cpu, struct Memory *mem)
 {
 	cpu->pc = 0;
 	cpu->memory = mem;
 	cpu->is_finished = false;
 }
 
-void Memory_init(struct Memory *mem) 
+void memory_init(struct Memory *mem) 
 {
 	for (size_t i = 0; i < kMemSize; i++)
 	{
@@ -246,3 +257,4 @@ Instruction decode(Register bytes)
 	}
 	return instruction;
 }
+
