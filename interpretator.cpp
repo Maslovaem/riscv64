@@ -302,12 +302,90 @@ void execute(CpuState *cpu, Instruction *instruction) {
                         cpu->pc = jump_target_address; 
         		break;
 		}
-		case Opcode::kStore: 
+		case Opcode::kStore:
+			if (instruction->func3 == 0b010)
+			{
+				//sw
+				//мб проверка на кратность адреса 4
+				store(cpu->memory, instruction->rs1 + instruction->imm, instruction->rs2);
+			} 
+			else if (instruction->func3 == 0b001)
+			{
+				//sh
+				//мб проверка на кратность адреса 2
+				store(cpu->memory, instruction->rs1 + instruction->imm, instruction->rs2 & 0xFFFF);
+			}
+			else if (instruction->func3 == 0b000)
+			{
+				//sb
+				store(cpu->memory, instruction->rs1 + instruction->imm, instruction->rs2 & 0xFF);
+			}
+			else
+			{
+				printf("Unknown instruction of type Store\n");
+			}
         		cpu->pc += 4;
 			break;
+		case Opcode::kLoad:
+			if (instruction->func3 == 0b010)
+			{	
+				//lw
+				set_reg(cpu, instruction->rd, load(cpu->memory, instruction->rs1 + instruction->imm));
+			}
+			else if (instruction->func3 == 0b001)
+			{
+				//lh
+				set_reg(cpu, instruction->rd, (load(cpu->memory, instruction->rs1 + instruction->imm)) & 0xFFFF);
+			}
+			else if (instruction->func3 == 0b000)
+			{
+				//lb
+				set_reg(cpu, instruction->rd, (load(cpu->memory, instruction->rs1 + instruction->imm)) & 0xFF);
+			}
+			else
+			{
+				printf("Unknown instruction of type Load");
+			}
+			cpu->pc += 4;
+			break;
 		case Opcode::kBeq: 
+			if (instruction->func3 == 0b000)
+			{
+				if (get_reg(cpu, instruction->rs1) == get_reg(cpu, instruction->rs2))
+				{
+					cpu->pc += instruction->imm;
+				}
+				else
+				{
+					cpu->pc += 4;
+				}
+			}
+			else if (instruction->func3 == 0b001)
+			{
+				if (get_reg(cpu, instruction->rs1) != get_reg(cpu, instruction->rs2))
+                                {
+                                        cpu->pc += instruction->imm;
+                                }
+                                else
+                                {
+                                        cpu->pc += 4;
+                                }
+
+			}
+			else 
+			{
+				printf("Unknown instruction of type Branch\n");
+			}
         		break;
+		case Opcode::kLui:
+			set_reg(cpu, instruction->rd, instruction->imm & 0xFFFFF000);
+			cpu->pc += 4;
+			break;
+		case Opcode::kAuipc:
+			set_reg(cpu, instruction->rd, cpu->pc + (instruction->imm & 0xFFFFF000));
+			cpu->pc += 4;
+			break;
 		default:
-			printf("Unknown instruction");
+			printf("Unknown instruction\n");
     }
 }
