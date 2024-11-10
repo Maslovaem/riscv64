@@ -9,14 +9,6 @@ typedef uint32_t Addr;
 const size_t kNumRegisters = 32;
 const size_t kMemSize = 0x400000;
 
-/**
- * ISA description
- * 4 bytes for each instruction
- * first byte - opcode
- * second byte - dest (if present)
- * third, fourth - two sources (if present)
- */
-
 //из cpp, чтобы перечисляемые элементы были не типа int
 enum class Opcode : std::uint8_t {
 	kUnknown = 0,
@@ -59,6 +51,7 @@ void memory_init(struct Memory *mem);
 
 Register fetch(struct CpuState *cpu);
 Instruction decode(Register bytes);
+void execute(CpuState *cpu, Instruction *instruction);
 void dump_cpu(struct CpuState *cpu);
 
 Register get_reg(struct CpuState *cpu, size_t id);
@@ -76,10 +69,40 @@ uint32_t get_imm_S(Register bytes);
 uint32_t get_imm_U(Register bytes);
 uint32_t get_imm_J(Register bytes);
 
+int my_strlen(const char *str);
+void asm_printf(const char *str);
+
 int main()
 {	
 	return 0;
 }
+
+int my_strlen(const char *str)
+{	
+	int len = 0;
+	
+	for(int i = 0; str[i] != '\0'; i++)
+	{
+		len++;
+	}
+	return len;
+}
+
+/*void asm_printf(const char *str)
+{
+	int len = my_strlen(str);
+
+	asm (
+		"li a0, 1\n"         
+		"la a1, %0\n"        
+		"mv a2, %1\n"        
+		"li a7, 64\n"        
+		"ecall\n"            
+		: //output
+		: "r" (str), "r" (len)  //input
+		: "a0", "a1", "a2", "a7"  //we need to spesify used registers
+	);
+}*/
 
 Register load(struct Memory *memory, Addr addr)
 {
@@ -109,8 +132,7 @@ void memory_init(struct Memory *mem)
   
 	if (mem->data == NULL) 
 	{
-        	printf("Failed to initialize memory\n");
-        	exit(-1);
+        	/*asm_printf("Failed to initialize memory\n")*/;
     	}
 }
 
@@ -253,7 +275,7 @@ Instruction decode(Register bytes)
                         instruction.imm = get_imm_U(bytes);
             		break;
         	default:
-            		printf("Unknown instruction");
+            		/*asm_printf("Unknown instruction")*/;
 	}
 	return instruction;
 }
@@ -322,7 +344,7 @@ void execute(CpuState *cpu, Instruction *instruction) {
 			}
 			else
 			{
-				printf("Unknown instruction of type Store\n");
+				/*asm_printf("Unknown instruction of type Store\n")*/;
 			}
         		cpu->pc += 4;
 			break;
@@ -344,7 +366,7 @@ void execute(CpuState *cpu, Instruction *instruction) {
 			}
 			else
 			{
-				printf("Unknown instruction of type Load");
+				/*asm_printf("Unknown instruction of type Load")*/;
 			}
 			cpu->pc += 4;
 			break;
@@ -374,7 +396,7 @@ void execute(CpuState *cpu, Instruction *instruction) {
 			}
 			else 
 			{
-				printf("Unknown instruction of type Branch\n");
+				/*asm_printf("Unknown instruction of type Branch\n")*/;
 			}
         		break;
 		case Opcode::kLui:
@@ -386,6 +408,6 @@ void execute(CpuState *cpu, Instruction *instruction) {
 			cpu->pc += 4;
 			break;
 		default:
-			printf("Unknown instruction\n");
+			/*asm_printf("Unknown instruction\n")*/;
     }
 }
