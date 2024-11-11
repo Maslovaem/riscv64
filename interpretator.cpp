@@ -7,7 +7,7 @@
 typedef int32_t Register;
 typedef uint32_t Addr;
 const size_t kNumRegisters = 32;
-const size_t kMemSize = 0x400000;
+const size_t kMemSize = 0x100; //мало места под ubuntu
 
 //из cpp, чтобы перечисляемые элементы были не типа int
 enum class Opcode : std::uint8_t {
@@ -40,7 +40,7 @@ typedef struct {
 	Register rs1, rs2, rd;
 	uint8_t func3;
 	uint8_t func7;
-	uint32_t imm;
+	int imm;
 } Instruction;
 
 Register load(struct Memory *memory, Addr addr);
@@ -48,6 +48,7 @@ void store(struct Memory *memory, Addr addr, Register value);
 
 void cpu_state_init(CpuState *cpu, struct Memory *memory);
 void memory_init(struct Memory *mem);
+void init_regs(CpuState *cpu);
 
 Register fetch(struct CpuState *cpu);
 Instruction decode(Register bytes);
@@ -64,7 +65,7 @@ uint8_t get_func7(Register bytes);
 Register get_rs1(Register bytes);
 Register get_rs2(Register bytes);
 uint32_t get_imm_I(Register bytes);
-uint32_t get_imm_B(Register bytes);
+int get_imm_B(Register bytes);
 uint32_t get_imm_S(Register bytes);
 uint32_t get_imm_U(Register bytes);
 uint32_t get_imm_J(Register bytes);
@@ -74,6 +75,41 @@ void asm_printf(const char *str);
 
 int main()
 {	
+	CpuState cpu;
+	Memory memory;
+
+	cpu_state_init(&cpu, &memory);
+	memory_init(&memory);
+	
+	uint32_t program[] = {
+		0x00100093,  // addi a1, x0, 1
+		0x00100113,  // addi a2, x0, 1
+		0x00000013,  // addi a0, x0, 0       //for i
+		0x00300193,  // addi a3, x0, 3       //for n, here n = 3
+
+		0x00110233,  // add a4, a1, a2
+		0x00010093,  // addi a1, a2, 0
+		0x00020113,  // addi a2, a4, 0
+
+		0x00100013,  // addi a0, x0, 1
+		0xFE3018E3,  // bne a3, a0, -16
+
+		0x00100073,
+	};
+
+	for (int i = 0; i < sizeof(program) / sizeof(program[0]); i++) 
+	{
+		store(&memory, i * 4, program[i]);
+	}
+
+	while (!cpu.is_finished) 
+	{
+		Register bytes = fetch(&cpu);              
+		Instruction instruction = decode(bytes);   
+		execute(&cpu, &instruction);               
+		dump_cpu(&cpu);                            
+	}
+	
 	return 0;
 }
 
@@ -118,22 +154,32 @@ void store(struct Memory *memory, Addr addr, Register value)
 
 void cpu_state_init(CpuState *cpu, struct Memory *mem)
 {
-	cpu->pc = 0;
 	cpu->memory = mem;
 	cpu->is_finished = false;
+	init_regs(cpu);
 }
 
 void memory_init(struct Memory *mem) 
 {
+	if (mem == NULL) 
+	{
+		printf("Memory pointer is NULL\n");
+		exit(1);
+	}
+    
 	for (size_t i = 0; i < kMemSize; i++)
 	{
 		mem->data[i] = 0;
 	}
-  
-	if (mem->data == NULL) 
+}
+
+void init_regs(CpuState *cpu)
+{
+	cpu->pc = 0;
+	for(int i = 0; i < kNumRegisters; i++)
 	{
-        	/*asm_printf("Failed to initialize memory\n")*/;
-    	}
+		cpu->regs[i] = 0;
+	}
 }
 
 Register get_reg(struct CpuState *cpu, size_t id) 
@@ -209,9 +255,9 @@ uint32_t get_imm_S(Register bytes)
 	return ((bytes >> 7) & 0x1F) | (((bytes >> 25) & 0x7F) << 5);
 }
 
-uint32_t get_imm_B(Register bytes)
+int get_imm_B(Register bytes)
 {
-	return (((bytes >> 8) & 0xF) << 1) | (((bytes >> 7) & 0x1) << 11) | (((bytes >> 25) & 0x3F) << 5) | (((bytes >> 31) & 0x1) << 31);
+	return ((bytes >> 20) & 0xFFFFF000) | ((bytes << 4) & 0x00000800) | ((bytes >> 20) & 0x000007E0) | ((bytes >> 7) & 0x0000001E);
 }
 
 uint32_t get_imm_U(Register bytes)
@@ -241,6 +287,7 @@ Instruction decode(Register bytes)
 			break;
 		//I_type
 		case Opcode::kAddi:
+			printf("Addi\n");
 		case Opcode::kJalr:
 		case Opcode::kEBreak:
 		case Opcode::kLoad:
@@ -272,10 +319,10 @@ Instruction decode(Register bytes)
 			instruction.func3 = get_func3(bytes);
                         instruction.rs1 = get_rs1(bytes);
                         instruction.rs2 = get_rs2(bytes);
-                        instruction.imm = get_imm_U(bytes);
+                        instruction.imm = get_imm_B(bytes);
             		break;
         	default:
-            		/*asm_printf("Unknown instruction")*/;
+            		printf("Unknown instruction, opcode: %hhu\n", (uint8_t)instruction.opcode);
 	}
 	return instruction;
 }
@@ -344,7 +391,7 @@ void execute(CpuState *cpu, Instruction *instruction) {
 			}
 			else
 			{
-				/*asm_printf("Unknown instruction of type Store\n")*/;
+				printf("Unknown instruction of type Store\n");
 			}
         		cpu->pc += 4;
 			break;
@@ -366,7 +413,7 @@ void execute(CpuState *cpu, Instruction *instruction) {
 			}
 			else
 			{
-				/*asm_printf("Unknown instruction of type Load")*/;
+				printf("Unknown instruction of type Load");
 			}
 			cpu->pc += 4;
 			break;
@@ -387,6 +434,7 @@ void execute(CpuState *cpu, Instruction *instruction) {
 				if (get_reg(cpu, instruction->rs1) != get_reg(cpu, instruction->rs2))
                                 {
                                         cpu->pc += instruction->imm;
+					printf("bne imm: %d", instruction->imm);
                                 }
                                 else
                                 {
@@ -396,7 +444,7 @@ void execute(CpuState *cpu, Instruction *instruction) {
 			}
 			else 
 			{
-				/*asm_printf("Unknown instruction of type Branch\n")*/;
+				printf("Unknown instruction of type Branch\n");
 			}
         		break;
 		case Opcode::kLui:
@@ -408,6 +456,6 @@ void execute(CpuState *cpu, Instruction *instruction) {
 			cpu->pc += 4;
 			break;
 		default:
-			/*asm_printf("Unknown instruction\n")*/;
+			printf("Unknown instruction execute\n");
     }
 }
